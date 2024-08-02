@@ -14,13 +14,19 @@ export default class User extends BaseModel {
   @column()
   declare registration?: number
 
-  @column.dateTime()
-  declare date_of_birth?: DateTime 
+  @column()
+  declare date_of_birth?: string 
 
   @column()
   declare password: string
 
   @column()
   declare type_access: string
+
+  @column()
+  declare token: string | null
+
+  @column()
+  declare expires_at: string  | null
 }
 

@@ -12,6 +12,8 @@ export default class extends BaseSchema {
       table.dateTime('date_of_birth')
       table.string('password').notNullable()
       table.string('type_access').notNullable()
+      table.string('token', 124)
+      table.string('expires_at')
     })
   }
 

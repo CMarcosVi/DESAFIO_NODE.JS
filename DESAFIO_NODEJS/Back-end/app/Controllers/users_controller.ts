@@ -1,26 +1,50 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import User from '../../app/Models/user.js'
 import Room from '../../app/Models/room.js'
-//import hash from '@adonisjs/core/services/hash'
 import { DateTime } from 'luxon'
+import hash from '@adonisjs/core/services/hash';
+import crypto from 'crypto'
 
 export default class AuthController {
   public async login({ request, response }: HttpContext) {
-    const name: string = request.input('name');
     const password: string = request.input('password');
-    const registration: number = request.input('registration')
-
-    if (!name || !password) {
-      return response.status(400).json({ message: 'Nome de usuário e senha são obrigatórios' });
-    };
-    if (typeof name != 'string' || typeof password != 'string' || typeof registration != 'string') {
-      return response.status(400).json({ message: 'Tipos incorretos' });
-    };
-    const user = await User.query().where('registration', registration).first();
-    if (user && user.password === password) {
-      return response.json({ message: 'Login bem-sucedido' });
-    };
-    return response.status(401).json({ message: 'Credenciais inválidas' });
+    const registration: number = parseInt(request.input('registration'), 10);
+    if (!registration || !password) {
+      return response.status(400).json({ message: 'Número de Registro e senha são obrigatórios' });
+    }
+    if (isNaN(registration)) {
+      return response.status(400).json({ message: 'Número de Registro inválido' });
+    }
+    try {
+      const user = await User.query().where('registration', registration).first();
+      if (!user) {
+        return response.status(401).json({ message: 'Credenciais inválidas' });
+      }
+      const isPasswordValid = await hash.verify(user.password, password);
+      if (isPasswordValid) {
+        const token = crypto.randomBytes(32).toString('hex');
+        user.token = token;
+        const futureDate = DateTime.now().plus({ days: 2 });
+        const formattedDate = futureDate.toFormat('yyyy-MM-dd');
+        user.expires_at = formattedDate
+        await user.save();  
+        try{
+          response.cookie('auth_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', 
+            sameSite: 'strict', 
+            maxAge: 2 * 24 * 60 * 60 * 1000
+          });
+          return response.status(200).json({ message: 'Login bem-sucedido' });
+        }catch{
+          response.status(401).json({ message: 'problemas para salvar'})
+        }
+      } else {
+        return response.status(401).json({ message: 'Credenciais inválidas' });
+      }
+    } catch (err) {
+      return response.status(500).json({ message: 'Erro interno do servidor' });
+    }
   };
   public async registerNewUser({ request, response }: HttpContext) {
       const name: string = request.input('name');
@@ -28,7 +52,9 @@ export default class AuthController {
       const date_of_birth: string = request.input('date_of_birth');
       const password: string = request.input('password');
       const type_access: string = 'user';
-  
+
+      const myHash = await hash.make(password);
+
       function getRandomNumber(min: number, max: number): number {
         return Math.floor(Math.random() * (max - min)) + min;
       };
@@ -57,15 +83,12 @@ export default class AuthController {
       if (existingUser) {
         return response.status(400).json({ message: 'Email já registrado' });
       };
-      //const hashedPassword = await hash.make(password);
       try {
-        // Criptografar a senha  
-        // Criar um novo usuário
         const newUser = await User.create({
           name,
           email,
-          date_of_birth,  // Converter DateTime para string no formato ISO
-          password//: hashedPassword
+          date_of_birth: birthDate.toFormat('yyyy-MM-dd'),  // Converter DateTime para string no formato ISO
+          password: myHash
           ,registration,
           type_access
         });
@@ -76,62 +99,6 @@ export default class AuthController {
         return response.status(500).json({ message: 'Erro ao registrar usuário' });
       };
   };
-  public async listAllRoomsUser({ params, response }: HttpContext) {
-    const registration: number = parseInt(params.registration, 10);
-    const user = await User.query().where('registration', registration).first();
-
-    if (typeof registration !== 'number') {
-      return response.status(400).json({ message: 'O valor de registration deve ser um número válido' });
-    }
-  
-    try {
-      const rooms = await Room.query()
-        .where(builder => {
-          builder
-            .where('student_1', registration)
-            .orWhere('student_2', registration)
-            .orWhere('student_3', registration)
-            .orWhere('student_4', registration)
-            .orWhere('student_5', registration)
-            .orWhere('student_6', registration)
-            .orWhere('student_7', registration)
-            .orWhere('student_8', registration)
-            .orWhere('student_9', registration)
-            .orWhere('student_10', registration)
-            .orWhere('student_11', registration)
-            .orWhere('student_12', registration)
-            .orWhere('student_13', registration)
-            .orWhere('student_14', registration)
-            .orWhere('student_15', registration)
-            .orWhere('student_16', registration)
-            .orWhere('student_17', registration)
-            .orWhere('student_18', registration)
-            .orWhere('student_19', registration)
-            .orWhere('student_20', registration)
-            .orWhere('student_21', registration)
-            .orWhere('student_22', registration)
-            .orWhere('student_23', registration)
-            .orWhere('student_24', registration)
-            .orWhere('student_25', registration)
-            .orWhere('student_26', registration)
-            .orWhere('student_27', registration)
-            .orWhere('student_28', registration)
-            .orWhere('student_29', registration)
-            .orWhere('student_30', registration);
-        })
-        .select('room_number')
-        .distinct(); 
-  
-      if (rooms.length === 0) {
-        return response.status(404).json({ message: 'Nenhuma sala encontrada com o registro fornecido' });
-      };
-  
-      return response.json( {user: user?.name, rooms: rooms.map(room => room.room_number) });
-    } catch (error) {
-      console.error('Erro ao buscar salas:', error);
-      return response.status(500).json({ message: 'Erro ao buscar salas' });
-    };
-  };
   public async editUser({ request, response }: HttpContext) {
     const name: string | undefined = request.input('name');
     const email: string | undefined = request.input('email');
@@ -139,31 +106,39 @@ export default class AuthController {
     const date_of_birth: string | undefined = request.input('date_of_birth');
     const password: string | undefined = request.input('password');
     const type_access: string | undefined = request.input('type_access');
-
     if (!registration) {
       return response.status(400).json({ message: 'Número de registro do usuário é obrigatório' });
-    };
+    }
     const user = await User.query().where('registration', registration).first();
     if (!user) {
       return response.status(404).json({ message: 'Usuário não encontrado' });
-    };
-
+    }
     if (email && !email.includes('@')) {
       return response.status(400).json({ message: 'Email inválido' });
-    };
+    }
+
+    // Valida a data de nascimento se fornecida
     if (date_of_birth) {
       try {
-        DateTime.fromISO(date_of_birth);
+        const birthDate = DateTime.fromISO(date_of_birth);
+        if (!birthDate.isValid) {
+          return response.status(400).json({ message: 'Data de nascimento inválida' });
+        }
+        user.date_of_birth = birthDate.toFormat('yyyy-MM-dd'); // Converte para o formato YYYY-MM-DD
       } catch (error) {
         return response.status(400).json({ message: 'Data de nascimento inválida' });
-      };
-    };
+      }
+    }
 
-    user.name = name ?? user.name
-    user.email = email ?? user.email
-    user.date_of_birth = date_of_birth ? DateTime.fromISO(date_of_birth) : user.date_of_birth
-    user.type_access = type_access ?? user.type_access
-    user.password = password ?? user.password
+    // Atualiza os campos do usuário
+    user.name = name ?? user.name;
+    user.email = email ?? user.email;
+    user.type_access = type_access ?? user.type_access;
+
+    // Atualiza a senha se fornecida
+    if (password) {
+      user.password = await hash.make(password);
+    }
 
     try {
       await user.save();
@@ -173,7 +148,7 @@ export default class AuthController {
     };
   };
   public async deleteUser({request, response}: HttpContext){    
-    const registration: string = request.input('registration');
+    const registration: number = request.input('registration');
     if (typeof registration != 'number') {
       return response.status(400).json({ message: 'Numero de registro só deve conter numero' });
     };
@@ -190,24 +165,46 @@ export default class AuthController {
     return response.status(401).json({ message: 'Credenciais inválidas' });
   };
   public async consultUser({request,response}: HttpContext){
-    const registration: number = parseInt(request.input('registration'), 10) 
+    const registration: number = parseInt(request.input('registration'), 10) ;
     const user = await User.query().where('registration', registration).first();
 
     if(typeof registration != 'number'){
-      return response.status(400).json({menssage: 'Por favor digite um valor correspondente a apenas numeros'})
+      return response.status(400).json({menssage: 'Por favor digite um valor correspondente a apenas numeros'});
     }
     if(!registration){
-      return response.status(400).json({menssage: 'Numero de Registro necessario'})
+      return response.status(400).json({menssage: 'Numero de Registro necessario'});
     }
     if(!user){
-      return response.status(404).json({menssage: 'Não foi possivel Encontrar usuario'})
+      return response.status(404).json({menssage: 'Não foi possivel Encontrar usuario'});
     }
-    return response.status(200).json(user)
-
-  }
+    return response.status(200).json(user);
+  };
+  public async listAllRoomsUser({ request, response }: HttpContext) {
+      const registration: number = parseInt(request.input('registration'),10);
+      if (typeof registration != 'number') {
+        return response.status(400).json({ message: 'O valor de registration deve ser um número válido' });
+      }
+      try {
+        const user = await User.query().where('registration', registration).first();
+        if (!user) {
+          return response.status(404).json({ message: 'Usuário não encontrado' });
+        }
+        const rooms = await Room.query()
+          .where(builder => {
+            for (let i = 1; i <= 30; i++) {
+              builder.orWhere(`student_${i}`, registration);
+            }
+          })
+          .select('room_number')
+          .distinct(); 
   
-  //F    E    I    T    O
-
-
-
-}
+        if (rooms.length === 0) {
+          return response.status(404).json({ message: 'Nenhuma sala encontrada com o registro fornecido' });
+        }
+  
+        return response.json({ user: user.name, rooms: rooms.map(room => room.room_number) });
+      } catch (error) {
+        return response.status(500).json({ message: 'Erro ao buscar salas' });
+      }
+  };
+  }
