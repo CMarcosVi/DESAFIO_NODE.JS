@@ -1,64 +1,47 @@
-/*
-|--------------------------------------------------------------------------
-| Routes file
-|--------------------------------------------------------------------------
-|
-| The routes file is used for defining the HTTP routes.
-|
-*/
-
 import router from '@adonisjs/core/services/router'
+import AuthController from '../app/Controllers/users_controller.js'
+import RoomsController from '../app/Controllers/rooms_controller.js'
 
-router.get('/', async () => {
-  return {
-    hello: 'world',
-  }
-})
+//import { middleware } from '#start/kernel'
 
-router.get('/loginTypeUser', async () => {
-  return {
-    hello: 'world'
-  }
-})
+  router.get('/', async () => {
+    return {
+      hello: 'world',
+    }
+  })
+  router.get('/loginVerify', [AuthController, 'login'])
+  //checked
+  router.group(() => {
+    router.post('/admin/createRoom', [RoomsController, 'createRoom'] )
+    router.get('/admin/consultRoom',[RoomsController, 'consultByRoom'] )
+    router.delete('/admin/deleteRoom',[RoomsController, 'deleteRoom'] )
+    router.get('/admin/getAllRooms',[RoomsController, 'getAllRooms'] )
+    router.put('/admin/updateRoom', [RoomsController, 'updateRoom'])
+    router.put('/admin/addStudent', [RoomsController, 'addStudent'])
+    router.put('/admin/removeStudent', [RoomsController, 'removeStudent'])
+    router.post('/admin/registerNewUser',[AuthController, 'registerNewUser'] )
+    router.get('/users/:registration/rooms', [AuthController, 'listAllRoomsUser'])
+    router.get('/admin/consultUser',[AuthController, 'consultUser'] )
+    router.put('/admin/editUser',[AuthController, 'editUser'] )
+  })
+ 
+  
+  /*
 
-router.get('/cadastro', async () => {
-  return {
-    hello: 'world'
-  }
-})
 
-router.get('/excluirDadosAluno', async () => {
-  return {
-    hello: 'world'
-  }
-})
 
-router.get('/dadosAluno/:id', async ({params}) => {
-  return {
-    hello: 'world'
-  }
-})
+    router.post('/admin/deleteUser',[AuthController, 'deleteUser'] )
 
-router.get('/salas', async ({params}) => {
-  return {
-    hello: 'world'
-  }
-})
 
-router.get('/infoSala/:id', async ({params}) => {
-  return {
-    hello: 'world'
-  }
-})
+  */
 
-router.get('/CriarSala', async ({params}) => {
-  return {
-    hello: 'world'
-  }
-})
+  
+  // A rota catch-all para tratar erros 404
 
-router.get('/ExcluirSala', async ({params}) => {
-  return {
-    hello: 'world'
-  }
-})
+    /*
+  */
+  /*router.any('*', async ({ response }) => {
+    return response.status(404).send({
+      message: 'Página não encontrada. Redirecionando para a página inicial...',
+    })
+  })*/

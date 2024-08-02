@@ -3,5 +3,18 @@
   "compilerOptions": {
     "rootDir": "./",
     "outDir": "./build",
+    "baseUrl": "./",
+    "paths": {
+      "App/*": ["app/*"],
+      "Contracts/*": ["contracts/*"],
+      "Utils/*": ["utils/*"]
+    },
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
+  "exclude": [
+    "node_modules",
+    "build"
+  ]
 }
